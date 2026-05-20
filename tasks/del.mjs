@@ -1,67 +1,75 @@
 #! /usr/bin/env node
 
-import { rm } from "node:fs/promises";
-import { readdir } from "node:fs/promises";
+import { rm, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { exit } from "node:process";
 
-let getFilenamePattern = (path) => path.split("/").pop();
-let getDirectory = (path) => path.replace(path.split("/").pop(), "");
+/* ───────────────────────────── helpers ───────────────────────────── */
 
-let getSubDirectories = async (path) => {
-  let allDirectories = [path];
+const getFilenamePattern = (path) => path.split("/").pop();
+
+const getDirectory = (path) =>
+  path.slice(0, path.length - getFilenamePattern(path).length);
+
+const endsWithGlobstar = (path) => path.endsWith("**/");
+
+const removeGlobstar = (path) => path.replace(/\*\*\/$/, "");
+
+const convertGlobToRegex = (pattern) =>
+  new RegExp("^" + pattern.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$");
+
+const matchesPattern = (filename, pattern) =>
+  convertGlobToRegex(pattern).test(filename);
+
+/* ───────────────────── recursive directory discovery ───────────────────── */
+
+const getSubDirectories = async (path) => {
+  let result = [];
+
+  if (!existsSync(path)) return result;
 
   try {
+    result.push(path);
+
     const items = await readdir(path, { withFileTypes: true });
-    const directories = items
-      .filter((item) => item.isDirectory())
-      .map((directory) => `${path}${directory.name}/`);
 
-    allDirectories.push(...directories);
-
-    for (const directory of directories) {
-      const subDirs = await getSubDirectories(directory);
-      allDirectories.push(...subDirs);
+    for (const item of items) {
+      if (item.isDirectory()) {
+        const subPath = `${path}${item.name}/`;
+        result.push(...(await getSubDirectories(subPath)));
+      }
     }
   } catch (error) {
-    console.error("Error reading directory:", error);
+    if (error.code !== "ENOENT") throw error;
   }
 
-  return allDirectories;
+  return result;
 };
 
-let endsWithGlobstar = (path) => /\*\*\/$/.test(path);
+/* ───────────────────────────── main ───────────────────────────── */
 
-let removeGlobstar = (path) => path.replace(new RegExp("\\*\\*/$", "g"), "");
+export const del = async (inputs) => {
+  for (const signature of inputs) {
+    const pattern = getFilenamePattern(signature);
+    const directory = getDirectory(signature);
 
-let convertGlobingToRegex = (pattern) =>
-  new RegExp(pattern.padEnd(1, "$").replace(".", "[.]").replace("*", ".*"));
+    if (endsWithGlobstar(directory)) {
+      const basePath = removeGlobstar(directory);
+      const directories = await getSubDirectories(basePath);
 
-let matchingPattern = (filename, filePattern) =>
-  filename.match(convertGlobingToRegex(filePattern)) == null ? false : true;
+      const expanded = directories.map((dir) => `${dir}${pattern}`);
 
-export const del = async (input) => {
-  input.forEach(async (signature) => {
-    let pattern = getFilenamePattern(signature);
-    let directory = getDirectory(signature);
-    let globstar = endsWithGlobstar(directory);
-
-    if (globstar) {
-      let path = removeGlobstar(directory);
-      let directories = await getSubDirectories(path);
-      let paths = await directories.map(
-        (directory) => `${directory}${pattern}`
-      );
-      await del(paths);
-    } else {
-      !existsSync(directory) && exit(1);
-      const items = await readdir(directory, { withFileTypes: true });
-
-      await items
-        .filter((item) => item.isFile())
-        .map((file) => file.name)
-        .filter((file) => matchingPattern(file, pattern))
-        .forEach(async (file) => await rm(`${directory}${file}`));
+      await del(expanded);
+      continue;
     }
-  });
+
+    if (!existsSync(directory)) continue;
+
+    const items = await readdir(directory, { withFileTypes: true });
+
+    for (const item of items) {
+      if (item.isFile() && matchesPattern(item.name, pattern)) {
+        await rm(`${directory}${item.name}`);
+      }
+    }
+  }
 };

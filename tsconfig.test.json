@@ -11,7 +11,12 @@
     "types": ["jasmine"],
     "declaration": false
   },
-  "include": ["./src/**/*", "./test/unit/**/*"],
+  "include": [
+    "./src/**/*",
+    "./test/unit/**/*",
+    "./test/helper/helper.d.ts",
+    "./test/helper/helper.js"
+  ],
   "exclude": ["node_modules", "dist", "tasks"],
   "typedocOptions": {
     "entryPoints": ["./src/*.ts"],

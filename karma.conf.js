@@ -5,28 +5,42 @@ module.exports = function (config) {
     frameworks: ["jasmine"],
     proxies: {
       "/src/": "/base/src/",
-      "/test/": "/base/test/unit/",
+      "/test/unit/": "/base/test/unit/",
+      "/test/helper/": "/base/test/helper/",
+      "/node_modules/": "/base/node_modules/"
     },
     files: [
+      { pattern: "./test/helper/helper.js" },
+      { pattern: "./src/*.css" },
+      { pattern: "./src/*.html" },
       { pattern: "./importmap/inject.js" },
       { pattern: "./importmap/importmap.test.js" },
+      {
+        pattern: "./node_modules/@scalable.software/**/dist/*.js",
+        type: "module"
+      },
       { pattern: "./src/**/*.js", type: "module" },
-      { pattern: "./test/unit/**/*.js", type: "module" },
+      { pattern: "./test/unit/**/*.js", type: "module" }
     ],
     preprocessors: {
-      "src/**/!(*.test).js": ["karma-coverage-istanbul-instrumenter"],
+      "src/**/!(*.test).js": ["karma-coverage-istanbul-instrumenter"]
     },
-    reporters: ["spec", "coverage-istanbul"],
+    plugins: ["karma-*", require("./tasks/json.reporter.js")],
+    reporters: ["spec", "coverage-istanbul", "json"],
+    jsonReporter: {
+      dir: "./report",
+      filename: "calculator.report.json"
+    },
     coverageIstanbulInstrumenter: {
-      esModules: true,
+      esModules: true
     },
     coverageIstanbulReporter: {
       reports: ["html", "text", "lcovonly"],
       dir: path.join(__dirname, "coverage"),
-      skipFilesWithNoCoverage: true,
+      skipFilesWithNoCoverage: true
     },
     browsers: ["ChromeHeadless"],
     singleRun: true,
-    logLevel: config.LOG_DISABLED,
+    logLevel: config.LOG_DISABLE
   });
 };

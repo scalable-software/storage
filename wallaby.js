@@ -1,9 +1,10 @@
 module.exports = function (wallaby) {
   return {
     files: [
+      "test/helper/helper.js",
       "importmap/inject.js",
       "importmap/importmap.test.js",
-      "src/**/*.ts",
+      "src/**/*.ts"
     ],
     tests: ["test/unit/**/*.ts"],
     trace: true,
@@ -15,9 +16,9 @@ module.exports = function (wallaby) {
         inlineSources: true,
         baseUrl: "./",
         paths: {
-          calculator: ["./src/Calculator.js"],
-        },
-      }),
-    },
+          calculator: ["./src/Calculator.js"]
+        }
+      })
+    }
   };
 };

@@ -1,4 +1,4 @@
-import { Calculator } from "calculator";
+import { Calculator } from "@scalable.software/storage";
 
 describe("Given Calculator imported", () => {
   it("Then Calculator should exist", () => {

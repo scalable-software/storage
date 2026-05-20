@@ -1,14 +1,14 @@
 {
-  "name": "@scalable.software/module.example",
+  "name": "@scalable.software/storage",
   "version": "1.1.0",
-  "description": "ESM based Simple Calculator",
+  "description": "ESM based Storage Module",
   "exports": {
     ".": {
-      "import": "./dist/Index.js"
+      "import": "./dist/index.js"
     }
   },
-  "types": "dist/Index.d.ts",
-  "module": "dist/Index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
   "scripts": {
     "clean.test": "node ./tasks/clean.test.mjs",
     "pretest": "npm run clean.test && tsc --project tsconfig.test.json",
@@ -24,14 +24,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/scalable-software/module.example.git"
+    "url": "git+https://github.com/scalable-software/storage.git"
   },
   "author": "Scalable.Software",
   "license": "CC-BY-NC-SA-4.0",
   "bugs": {
-    "url": "https://github.com/scalable-software/module.example/issues"
+    "url": "https://github.com/scalable-software/storage/issues"
   },
-  "homepage": "https://github.com/scalable-software/module.example#readme",
+  "homepage": "https://github.com/scalable-software/storage#readme",
   "devDependencies": {
     "@types/jasmine": "^5.1.4",
     "@web/dev-server": "^0.4.5",

@@ -6,8 +6,8 @@
 inject(
   {
     imports: {
-      calculator: "./src/Calculator.js",
-    },
+      "@scalable.software/storage": "./src/index.js"
+    }
   },
   "importmap"
 );

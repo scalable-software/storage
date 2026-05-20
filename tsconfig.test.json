@@ -6,7 +6,7 @@
     "sourceMap": true,
     "inlineSources": true,
     "paths": {
-      "calculator": ["./src/Calculator.js"]
+      "@scalable.software/storage": ["./src/index.js"]
     },
     "types": ["jasmine"],
     "declaration": false
@@ -25,7 +25,7 @@
     "disableSources": true,
     "categorizeByGroup": false,
     "sort": ["static-first", "visibility"],
-    "name": "Calculator",
+    "name": "Storage",
     "plugin": ["typedoc-plugin-merge-modules"],
     "mergeModulesMergeMode": "module",
     "hideGenerator": true

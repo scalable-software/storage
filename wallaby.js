@@ -16,7 +16,7 @@ module.exports = function (wallaby) {
         inlineSources: true,
         baseUrl: "./",
         paths: {
-          calculator: ["./src/Calculator.js"]
+          "@scalable.software/storage": ["./src/index.js"]
         }
       })
     }

@@ -1,0 +1,27 @@
+{
+  "Component": "Calculator",
+  "Namespace": "Calculator",
+  "Description": "Simple Calculator",
+  "operations": {
+    "Add": {
+      "description": "Adds two numbers together.",
+      "parameters": ["number", "number"],
+      "returns": "number"
+    },
+    "Subtract": {
+      "description": "Subtracts two numbers together.",
+      "parameters": ["number", "number"],
+      "returns": "void"
+    },
+    "Multiply": {
+      "description": "Multiplies two numbers together.",
+      "parameters": ["number", "number"],
+      "returns": "void"
+    },
+    "Divide": {
+      "description": "Divides two numbers together.",
+      "parameters": ["number", "number"],
+      "returns": "void"
+    }
+  }
+}

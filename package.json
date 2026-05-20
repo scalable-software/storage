@@ -1,0 +1,48 @@
+{
+  "name": "@scalable.software/module.example",
+  "version": "1.1.0",
+  "description": "ESM based Simple Calculator",
+  "exports": {
+    ".": {
+      "import": "./dist/Index.js"
+    }
+  },
+  "types": "dist/Index.d.ts",
+  "module": "dist/Index.js",
+  "scripts": {
+    "clean.test": "node ./tasks/clean.test.mjs",
+    "pretest": "npm run clean.test && tsc --project tsconfig.test.json",
+    "test": "karma start",
+    "posttest": "npm run clean.test",
+    "prebuild": "node ./tasks/clean.build.mjs",
+    "build": "tsc --project tsconfig.build.json",
+    "preserve": "npm run build",
+    "serve": "web-dev-server --open /demo/index.html",
+    "document": "npx typedoc --tsconfig tsconfig.test.json",
+    "prepublish": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scalable-software/module.example.git"
+  },
+  "author": "Scalable.Software",
+  "license": "CC-BY-NC-SA-4.0",
+  "bugs": {
+    "url": "https://github.com/scalable-software/module.example/issues"
+  },
+  "homepage": "https://github.com/scalable-software/module.example#readme",
+  "devDependencies": {
+    "@types/jasmine": "^5.1.4",
+    "@web/dev-server": "^0.4.5",
+    "jasmine": "^5.1.0",
+    "karma": "^6.4.3",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-coverage-istanbul-instrumenter": "^1.0.4",
+    "karma-coverage-istanbul-reporter": "^3.0.3",
+    "karma-jasmine": "^5.1.0",
+    "karma-spec-reporter": "^0.0.36",
+    "typedoc": "^0.25.13",
+    "typedoc-plugin-merge-modules": "^5.1.0",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "module": "es2022",
+    "target": "es2022",
+    "moduleResolution": "bundler",
+    "sourceMap": true,
+    "inlineSources": true,
+    "paths": {
+      "calculator": ["./src/Calculator.js"]
+    },
+    "types": ["jasmine"],
+    "declaration": false
+  },
+  "include": ["./src/**/*", "./test/unit/**/*"],
+  "exclude": ["node_modules", "dist", "tasks"],
+  "typedocOptions": {
+    "entryPoints": ["./src/*.ts"],
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "disableSources": true,
+    "categorizeByGroup": false,
+    "sort": ["static-first", "visibility"],
+    "name": "Calculator",
+    "plugin": ["typedoc-plugin-merge-modules"],
+    "mergeModulesMergeMode": "module",
+    "hideGenerator": true
+  }
+}

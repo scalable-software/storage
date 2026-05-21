@@ -1,137 +1,464 @@
 ![License: CC BY-NC-SA 4.0](https://flat.badgen.net/static/license/CC-BY-NC-SA-4.0/green)
 
-# Module.Example
+# @scalable.software/storage
 
-A comprehensive template for creating ES6 modules, for use in the browser, with unit testing and api document generation.
+A small ESM-first browser storage module that wraps IndexedDB with a typed repository layer and a consistent event model.
 
-Although this example modules can be used in the browser, it does not include any UI. It is just a simple Calculator. For a template that includes a complete Web Component see: [web.component](https://github.com/scalable-software/web.component)
+It provides:
+
+- database lifecycle management through `Storage`
+- table-scoped CRUD access through `Repository<T>`
+- lifecycle and repository events dispatched from a single `Storage` instance
+- lightweight state metadata for activity, status, operations, and events
+- repository synchronization through `repo.synchronize(data)`
+
+The module stays deliberately small. It does not add schema migrations, querying helpers, or ORM-style abstractions.
+
+## Installation
+
+```bash
+npm install @scalable.software/storage
+```
+
+## Quick Start
+
+```typescript
+import { Storage } from "@scalable.software/storage";
+
+type Node = {
+  id: string;
+  name: string;
+  type: string;
+  coordinates: { x: number; y: number };
+  icon: string;
+};
+
+const Table = {
+  METADATA: "metadata",
+  NODES: "nodes",
+  CONNECTION: "connection"
+} as const;
+
+const storage = new Storage({
+  name: "app.storage",
+  version: 1,
+  tables: [Table.METADATA, Table.NODES, Table.CONNECTION]
+});
+
+const database = await storage.create();
+
+const nodes = storage.repository<Node>(Table.NODES);
+
+await nodes.add({
+  id: "1",
+  name: "Start",
+  type: "start",
+  coordinates: { x: 0, y: 400 },
+  icon: "icon.svg"
+});
+
+await nodes.update({
+  id: "1",
+  name: "Start Updated",
+  type: "start",
+  coordinates: { x: 10, y: 410 },
+  icon: "icon.svg"
+});
+
+const result = await nodes.retrieve();
+
+console.log(result);
+
+database.close();
+
+await storage.delete();
+```
+
+## Public API
+
+### `Storage`
+
+`Storage` is the main entry point. It extends `EventTarget`, manages the IndexedDB connection, and dispatches both lifecycle and repository events.
+
+```typescript
+const storage = new Storage({
+  name: "app.storage",
+  version: 1,
+  tables: ["nodes", "connections"]
+});
+```
+
+#### Configuration
+
+| Property  | Type       | Required | Description                               |
+| --------- | ---------- | -------- | ----------------------------------------- |
+| `name`    | `string`   | Yes      | IndexedDB database name                   |
+| `version` | `number`   | Yes      | Database version used by IndexedDB        |
+| `tables`  | `string[]` | Yes      | Object store names to create              |
+| `keyPath` | `string`   | No       | Object store key path, defaults to `"id"` |
+
+#### State getters
+
+`Storage` exposes these read-only properties:
+
+- `name: string`
+- `version: number`
+- `tables: string[]`
+- `keyPath: string`
+- `database: IDBDatabase | null`
+- `activity: Activity`
+- `status: Status`
+
+#### Lifecycle methods
+
+##### `await storage.create()`
+
+Creates the database and creates any configured object stores that do not already exist.
+
+Returns: `Promise<IDBDatabase>`
+
+Side effects:
+
+- sets `activity` to `Activity.CREATING` during the operation
+- sets `status` to `Status.READY` on success
+- stores the opened `IDBDatabase` in `storage.database`
+
+##### `await storage.open()`
+
+Opens an existing database.
+
+Returns: `Promise<IDBDatabase>`
+
+Side effects:
+
+- sets `activity` to `Activity.OPENING` during the operation
+- sets `status` to `Status.READY` on success
+- stores the opened `IDBDatabase` in `storage.database`
+
+##### `await storage.delete()`
+
+Closes the current connection, deletes the database, clears `storage.database`, and sets the status to `Status.MISSING`.
+
+Returns: `Promise<void>`
+
+##### `await storage.exists()`
+
+Checks whether a database with the configured `name` and `version` exists.
+
+Returns: `Promise<boolean>`
+
+##### `storage.dispose()`
+
+Closes the current connection without deleting the database, clears `storage.database`, and resets the status to `Status.UNKNOWN`.
+
+Returns: `void`
+
+##### `storage.repository<T>(table)`
+
+Creates a repository bound to a single object store.
+
+Returns: `Repository<T>`
+
+### `Repository<T>`
+
+A repository is bound to a single object store and exposes CRUD plus synchronization helpers.
+
+```typescript
+type MyEntity = { id: string; name: string };
+
+const repo = storage.repository<MyEntity>("nodes");
+```
+
+`T` must extend `{ id: string }`.
+
+Available methods:
+
+- `add(item): Promise<IDBValidKey>`
+- `retrieve(): Promise<T[]>`
+- `update(item): Promise<IDBValidKey>`
+- `remove(id): Promise<void>`
+- `synchronize(data): Promise<void>`
+
+#### `await repo.synchronize(data)`
+
+Synchronizes the table against a desired snapshot.
+
+Behavior:
+
+- updates items whose `id` already exists
+- adds items whose `id` does not exist yet
+- removes persisted items whose `id` is not present in `data`
+
+```typescript
+await repo.synchronize([
+  { id: "A", name: "Alpha Updated" },
+  { id: "C", name: "Charlie" }
+]);
+```
+
+## Events
+
+All events are dispatched from the `Storage` instance, including repository operations.
+
+You can subscribe in two ways:
+
+```typescript
+import { Event } from "@scalable.software/storage";
+
+storage.addEventListener(Event.BEFORE_ADD, (event) => {
+  console.log(event.detail);
+});
+```
+
+Or by assigning one of the event-handler properties:
+
+```typescript
+storage.beforeadd = (event) => {
+  console.log(event.detail);
+};
+```
+
+Available handler properties:
+
+- `beforecreate`
+- `aftercreate`
+- `beforeopen`
+- `afteropen`
+- `beforedelete`
+- `afterdelete`
+- `beforeadd`
+- `afteradd`
+- `beforeretrieve`
+- `afterretrieve`
+- `beforeupdate`
+- `afterupdate`
+- `beforeremove`
+- `afterremove`
+- `onerror`
+
+Available event constants:
+
+- `Event.BEFORE_CREATE`
+- `Event.AFTER_CREATE`
+- `Event.BEFORE_OPEN`
+- `Event.AFTER_OPEN`
+- `Event.BEFORE_DELETE`
+- `Event.AFTER_DELETE`
+- `Event.BEFORE_ADD`
+- `Event.AFTER_ADD`
+- `Event.BEFORE_RETRIEVE`
+- `Event.AFTER_RETRIEVE`
+- `Event.BEFORE_UPDATE`
+- `Event.AFTER_UPDATE`
+- `Event.BEFORE_REMOVE`
+- `Event.AFTER_REMOVE`
+- `Event.ON_ERROR`
+
+### Event payloads
+
+Lifecycle events use:
+
+```typescript
+type LifecycleDetail = {
+  activity: Activity;
+  status: Status;
+};
+```
+
+Repository events use:
+
+```typescript
+type RepositoryDetail = {
+  table: string;
+  id?: string;
+};
+```
+
+Error events use:
+
+```typescript
+type ErrorDetail = {
+  operation: Operation;
+  error: unknown;
+  activity?: Activity;
+  status?: Status;
+  table?: string;
+  id?: string;
+};
+```
+
+Lifecycle error events from `Storage` include `operation`, `activity`, `status`, and `error`.
+
+Repository error events include:
+
+- `operation`
+- `table`
+- `error`
+- `id` for `add`, `update`, and `remove`
+
+## Metadata Exports
+
+The package exports four metadata objects.
+
+### `Activity`
+
+```typescript
+import { Activity } from "@scalable.software/storage";
+```
+
+Values:
+
+- `Activity.IDLE`
+- `Activity.CREATING`
+- `Activity.OPENING`
+- `Activity.DELETING`
+- `Activity.ADDING`
+- `Activity.RETRIEVING`
+- `Activity.UPDATING`
+- `Activity.REMOVING`
+
+### `Status`
+
+```typescript
+import { Status } from "@scalable.software/storage";
+```
+
+Values:
+
+- `Status.UNKNOWN`
+- `Status.MISSING`
+- `Status.READY`
+
+### `Operation`
+
+```typescript
+import { Operation } from "@scalable.software/storage";
+```
+
+Values:
+
+- `Operation.CREATE`
+- `Operation.OPEN`
+- `Operation.DELETE`
+- `Operation.ADD`
+- `Operation.RETRIEVE`
+- `Operation.UPDATE`
+- `Operation.REMOVE`
+
+### `Event`
+
+```typescript
+import { Event } from "@scalable.software/storage";
+```
+
+The values are the lowercase DOM event names such as `"beforecreate"` and `"afteradd"`.
+
+## Usage Patterns
+
+### Create once, then work through repositories
+
+```typescript
+const storage = new Storage({
+  name: "app.storage",
+  version: 1,
+  tables: ["nodes"]
+});
+
+await storage.create();
+
+const repo = storage.repository<{ id: string; name: string }>("nodes");
+
+await repo.add({ id: "1", name: "Alpha" });
+
+const items = await repo.retrieve();
+
+console.log(items);
+```
+
+### Observe repository operations centrally
+
+```typescript
+storage.addEventListener(Event.AFTER_UPDATE, (event) => {
+  console.log("updated", event.detail.table, event.detail.id);
+});
+
+storage.addEventListener(Event.ON_ERROR, (event) => {
+  console.error(event.detail.operation, event.detail.error);
+});
+```
+
+### Open an existing database later
+
+```typescript
+const storage = new Storage({
+  name: "app.storage",
+  version: 1,
+  tables: ["nodes"]
+});
+
+if (await storage.exists()) {
+  await storage.open();
+}
+```
+
+## Notes And Limitations
+
+- This package is intended for browser environments with IndexedDB support.
+- `Repository<T>` requires `T` to include an `id: string` property.
+- Even if a custom `keyPath` is configured for the database, the repository API still operates on `id`.
+- `storage.exists()` checks the configured `name` and `version` together.
+- `storage.delete()` can reject if IndexedDB reports a blocked delete.
+- CRUD operations reject their promises on failure and also emit `Event.ON_ERROR` from the parent `Storage` instance.
+- `storage.repository(table)` does not validate table names eagerly; failures surface when IndexedDB transactions run.
+
+## Exports
+
+Root exports:
+
+- `Storage`
+- `Repository`
+- `Activity`
+- `Status`
+- `Operation`
+- `Event`
+- `Configuration` type
 
 ## Development
 
-1. Create a new repository using this template
-
-2. Clone the repository to your local machine
-
-3. Install the dependencies
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-4. Run the unit tests to ensure everything is working as expected
+Run tests:
 
 ```bash
 npm test
 ```
 
-5. Build the es6 module
+Build the package:
 
 ```bash
 npm run build
 ```
 
-6. Update the `package.json` file with the appropriate details.
-
-7. Update the `README.md` file with the appropriate details.
-
-8. Update the `LICENSE` file with the appropriate details.
-
-> Note: This template uses a scoped package name: `@scalable.software/module.example`. To use scoped package names you will need to create an account on NPM and create a new organization. Also note, the free tier of NPM allows for unlimited public packages only. if you want to create private packages, you will need to upgrade to a paid plan.
-
-## Publishing
-
-A new package will be published to NPM when a new release is created in Github. However, it is important to bump the version number in the `package.json` file, as well as creating an associated tag, before creating a new release. Following the steps below:
-
-1. Determine the type of version bump (major, minor, patch)
-2. Run the following command to bump the version number
-
-```bash
-npm version <major|minor|patch>
-```
-
-3. Given you have used the above command a tag will be automatically created, else you can create a tag manually
-
-```bash
-git tag -a v1.0.0 -m "Version 1.0.0"
-```
-
-4. Push the tag to the remote repository
-
-```bash
-git push origin v1.0.0
-```
-
-5. Create a new release in Github
-
-> Note: a manual publication to NPM is required for the first release when using a scoped package on the free tier of NPM: `npm publish --access public`.
-
-### Typescript Compiler Options
-
-Two different typescript configuration are defined: `tsconfig.build.json` and `tsconfig.test.json`. The typescript complier options of the two files are largely the same. The main difference is that type declarations are included two configuration files are largely the same. Below is an overview of the compiler options used:
-
-```json
-{
-  "compilerOptions": {
-    "module": "es2022",
-    "target": "es2022",
-    "moduleResolution": "bundler",
-    "declaration": true,
-    "rootDir": "./src",
-    "outDir": "./dist/",
-    "paths": {
-      "calculator": ["./src/Calculator.js"]
-    }
-  },
-  "include": ["./src/**/*"]
-}
-```
-
-The important options to note are:
-
-1. `module`  
-   The `es2022` module system is used to enable the use of ESM in the browser.
-
-2. `paths`  
-   The `paths` option is used to define module aliases and used in conjunction with importmaps to avoid the use of a bundler. See the section on importmaps for more details.
-
-### Unit Testing
-
-This template enables both realtime and manual unit testing. Realtime unit testing is achieved using `wallaby` and manual unit testing is done using the `karma` test runner with `jasmine` assertion library. Both `wallaby` and `karma` configuration file is located at the root of the project: `wallaby.js`, `karma.conf.js`.
-
-To manually run the unit tests, and generate coverage reports in the `coverage` folder, use the following command:
-
-```bash
-npm test
-```
-
-### Typedoc Configuration
-
-In addition the typescript compiler options, the `tsconfig.test.json` configuration file also contains Typedoc configuration details. Typedoc is a documentation generator for typescript projects.
-
-To generate the API documentation, in the docs folder, use the following command:
+Generate API documentation:
 
 ```bash
 npm run document
 ```
 
-### Importmaps
+Run the demo application:
 
-Import maps are a browser feature that enables developers to define how JavaScript module specifiers are resolved to their corresponding files or URLs, allowing for custom mapping of module names to paths and facilitating easier management of dependencies. By using import maps, developers can therefore easily switch between a local file, an NPM installed package or even a CDN hosted file. Also, Import maps is what enables the use of ESM compiled TypeScript to work in the browser without the use of any bundler.
-
-Lastly, the keep the mail HTML file as lean as possible, an injection script is used to inject import maps defined as json objects into the html document. Once, external Import maps have been added to the HTML spec, the injection script will not longer be needed. See the `./importmap` folder, which contains the following files:
-
-1. `inject.js` - The script that injects the import map into the HTML document
-2. `importmap.build.js` - The import map used by the demo page
-3. `importmap.test.js` - The import map used by the test page
+```bash
+npm run serve
+```
 
 ## License
 
-> his software and its documentation are released under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License (CC BY-NC-SA 4.0). This means you are free to share, copy, distribute, and transmit the work, and to adapt it, but only under the following conditions:
->
-> Attribution: You must attribute the work in the manner specified by the author or licensor (but not in any way that suggests that they endorse you or your use of the work).
->
-> NonCommercial: You may not use this material for commercial purposes.
->
-> ShareAlike: If you alter, transform, or build upon this work, you may distribute the resulting work only under the same or similar license to this one.
->
-> For more details, please visit the full [license agreement](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+This project is licensed under **CC BY-NC-SA 4.0**.
+
+You may share and adapt the work with attribution, but not for commercial purposes, and derivative works must be distributed under the same or a compatible license.
+
+See the [LICENSE](./LICENSE) file for details.
